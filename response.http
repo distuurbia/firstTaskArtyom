@@ -1,0 +1,88 @@
+### Get all cars
+curl http://localhost:5433/car
+
+### Get car by ID
+curl http://localhost:5433/car/8b4617ff-e891-4795-9d74-98b44645de8b
+
+### Create car
+curl http://localhost:5433/car \
+    --header "Content-Type: application/json" \
+    --request "POST" \
+    --data '{"brand": "Honda",
+    "productionyear": 2007,
+    "isrunning": true}'
+
+### Delete car by ID
+curl -X DELETE http://localhost:5433/car/b474b13b-9db2-4b97-993a-fdda687ce729
+
+### Update car 
+curl http://localhost:5433/car \
+  --header "Content-Type: application/json" \
+  --request "PUT" \
+  --data '{
+    "id": "8b4617ff-e891-4795-9d74-98b44645de8b",
+    "brand": "Volkswagen",
+    "productionyear": 2009,
+    "isrunning": false }' \
+
+###-------------------------------------------------------------------------------------
+
+### Sign Up User 
+curl  http://localhost:5433/signup \
+    --header "Content-Type: application/json" \
+    --request "POST" \
+    --data '{"login": "mohhamad", "password": "bombhasbeenplanted"}'
+
+### Log In User
+curl  http://localhost:5433/login \
+    --header "Content-Type: application/json" \
+    --request "POST" \
+    --data '{"login": "mohhamad", "password": "bombhasbeenplanted"}'
+
+### Refresh Token
+curl  http://localhost:5433/refresh \
+    --header "Content-Type: application/json" \
+    --request "POST" \
+    --data '{"accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2ODc4NjQ2NjEsImlkIjoiMWQzMDUyZDYtYzgzNy00NmY5LTgyNDctYmRjZGM1YThlZjkzIn0.fA0ZqKuJSCaCR0HdG83ijk66EPib9HQTKkEI2uoLV-0", 
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2ODgxMjI5NjEsImlkIjoiMWQzMDUyZDYtYzgzNy00NmY5LTgyNDctYmRjZGM1YThlZjkzIn0.92ZItupFd0ZvsJ1BnbBtDb7A0MRmH57CkjPz9gHIo5U"}'
+
+###-------------------------------------------------------------------------------------
+
+### Get all cars with TOKEN
+curl -X GET http://localhost:5433/car \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2ODgwNTAzMTEsImlkIjoiMDAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAwIn0.QHxyiP2T4BuA7ngClhfvPymoCh5XD32XwXKaYP42gQw"
+
+### Get car by ID with TOKEN
+curl http://localhost:5433/car/e2d61719-e96e-4ee7-8a8b-f8ad731fc83d\
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2ODgyOTk0NTIsImlkIjoiMDAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAwIn0.mxFTshiGl3rjJNFKigd7hx4HW71UpDSi6qfyT3IV1Lw"
+
+### Create car with TOKEN
+curl http://localhost:5433/car \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2ODgwNjg4MDQsImlkIjoiNGIxZGMwYjYtNDQ3ZC00OWViLWE0ZmQtNTBiYmI2NGZjODI0In0.XEDnpTqCoUjDOg8clIQZuYBj9enSXIGk-kb_NUQZMdk" \
+  -d '{
+    "brand": "Lotus",
+    "productionyear": 2020,
+    "isrunning": true }'
+
+### Delete car by ID with TOKEN
+curl -X DELETE http://localhost:5433/car/54b24c23-48bb-4869-9507-f732be9f1214 \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2ODgzMDczNDYsImlkIjoiMDAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAwIn0.ir7HIfzk17lwTnG7x3msECO-6KuEZQwc7A_sOb6b_DM"
+
+### Update car with TOKEN  
+curl http://localhost:5433/car \
+  --header "Content-Type: application/json" \
+  --header "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2ODgyOTgxOTUsImlkIjoiMDAwMDAwMDAtMDAwMC0wMDAwLTAwMDAtMDAwMDAwMDAwMDAwIn0.w2MW7uN0u6CUvtxFUgN43L2V70OUGvRD8HSbdYHhj1k" \
+  --request "PUT" \
+  --data '{
+    "id": "303cae05-0523-4ee1-8af4-b99778895ce2",
+    "brand": "Dodge",
+    "productionyear": 2011,
+    "isrunning": true }' \
+
+###-------------------------------------------------------------------------------------
+
+### Download image
+GET http://localhost:5433/download/1687957549024150164.png
+
+

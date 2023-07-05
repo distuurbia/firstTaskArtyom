@@ -1,0 +1,302 @@
+basePath: /
+definitions:
+  handler.InputData:
+    properties:
+      login:
+        type: string
+      password:
+        type: string
+    type: object
+  handler.InputTokens:
+    properties:
+      accessToken:
+        type: string
+      refreshToken:
+        type: string
+    type: object
+  model.Car:
+    properties:
+      brand:
+        type: string
+      id:
+        type: string
+      isrunning:
+        type: boolean
+      productionyear:
+        maximum: 2023
+        minimum: 1950
+        type: integer
+    required:
+    - brand
+    - id
+    type: object
+host: localhost:5433
+info:
+  contact: {}
+  title: Car API
+  version: "1.0"
+paths:
+  /car:
+    get:
+      consumes:
+      - application/json
+      description: Get All car
+      operationId: getall-car
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Car'
+        "400":
+          description: Bad Request
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: GetAll
+      tags:
+      - methods
+    post:
+      consumes:
+      - application/json
+      description: Create a new car
+      operationId: create-car
+      parameters:
+      - description: car
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/model.Car'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Car'
+        "400":
+          description: Bad Request
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Create
+      tags:
+      - methods
+    put:
+      consumes:
+      - application/json
+      description: Update car
+      operationId: update-car
+      parameters:
+      - description: car
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/model.Car'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Car'
+        "400":
+          description: Bad Request
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Update
+      tags:
+      - methods
+  /car/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete car
+      operationId: delete-car
+      parameters:
+      - description: car
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Delete
+      tags:
+      - methods
+    get:
+      consumes:
+      - application/json
+      description: Get car
+      operationId: get-car
+      parameters:
+      - description: car
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Car'
+        "400":
+          description: Bad Request
+          schema: {}
+      security:
+      - ApiKeyAuth: []
+      summary: Get
+      tags:
+      - methods
+  /download/{filename}:
+    get:
+      consumes:
+      - application/json
+      description: Download Image
+      operationId: download-image
+      parameters:
+      - description: Image filename
+        in: path
+        name: filename
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema: {}
+      summary: DownloadImage
+      tags:
+      - image
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Log In User
+      operationId: login
+      parameters:
+      - description: info
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handler.InputData'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: token
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      summary: GetByLogin
+      tags:
+      - auth
+  /refresh:
+    post:
+      consumes:
+      - application/json
+      description: Refresh Token
+      operationId: refresh-token
+      parameters:
+      - description: info
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handler.InputTokens'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: tokens
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      summary: RefreshToken
+      tags:
+      - auth
+  /signup:
+    post:
+      consumes:
+      - application/json
+      description: Create account
+      operationId: create-account
+      parameters:
+      - description: info
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handler.InputData'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: token
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema: {}
+      summary: SignUpUser
+      tags:
+      - auth
+  /upload:
+    post:
+      consumes:
+      - application/json
+      description: Upload Image
+      operationId: upload-image
+      parameters:
+      - description: Image file
+        in: formData
+        name: image
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema: {}
+      summary: UploadImage
+      tags:
+      - image
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

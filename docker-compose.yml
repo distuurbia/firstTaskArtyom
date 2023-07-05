@@ -1,0 +1,43 @@
+version: "3.9"
+services:
+  task-1:
+    build: .
+    environment:
+      ACCESS_TOKEN_SIGNATURE: "secretAccess"
+      REFRESH_TOKEN_SIGNATURE: "secretRefresh"
+      POSTGRES_PATH: "postgres://artempg:artempg@localhost:5432/db"
+      MONGO_PATH: "mongodb://artemmdb:artemmdb@localhost:27017"
+    ports:
+      - 5433:5433
+    networks:
+      - my-network
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_DB: "db"
+      POSTGRES_USER: "artempg"
+      POSTGRES_PASSWORD: "artempg"
+    ports:
+      - 5432:5432
+    networks:
+      - my-network
+  redis:
+    image: redis
+    environment:
+      REDIS_PASSWORD: "artemrdb"
+      REDIS_ADDRESS: "localhost:6379"
+    ports:
+      - 6379:6379
+    networks:
+      - my-network
+  mongodb:
+    image: mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "artemmdb"
+      MONGO_INITDB_ROOT_PASSWORD: "artemmdb"
+    ports:
+      - 27017:27017
+    networks:
+      - my-network
+networks:
+  my-network:
