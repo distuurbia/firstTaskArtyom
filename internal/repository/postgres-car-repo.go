@@ -7,6 +7,7 @@ import (
 
 	"github.com/distuurbia/firstTaskArtyom/internal/model"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -43,18 +44,24 @@ func (p *PgRepository) Get(ctx context.Context, id uuid.UUID) (*model.Car, error
 
 // Delete removes a car record from the database based on the provided ID.
 func (p *PgRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	_, err := p.pool.Exec(ctx, "DELETE FROM car WHERE id = $1", id)
+	res, err := p.pool.Exec(ctx, "DELETE FROM car WHERE id = $1", id)
 	if err != nil {
 		return fmt.Errorf("PgRepository-Delete: error in method r.pool.Exec(): %w", err)
+	}
+	if res.RowsAffected() == 0 {
+		return pgx.ErrNoRows
 	}
 	return nil
 }
 
 // Update updates a car record in the database.
 func (p *PgRepository) Update(ctx context.Context, car *model.Car) error {
-	_, err := p.pool.Exec(ctx, "UPDATE car SET brand = $1, productionyear = $2, isrunning = $3 WHERE id = $4", car.Brand, car.ProductionYear, car.IsRunning, car.ID)
+	res, err := p.pool.Exec(ctx, "UPDATE car SET brand = $1, productionyear = $2, isrunning = $3 WHERE id = $4", car.Brand, car.ProductionYear, car.IsRunning, car.ID)
 	if err != nil {
 		return fmt.Errorf("PgRepository-Update: error in method r.pool.Exec(): %w", err)
+	}
+	if res.RowsAffected() == 0 {
+		return pgx.ErrNoRows
 	}
 	return nil
 }

@@ -52,9 +52,12 @@ func (m *MongoRepository) Get(ctx context.Context, id uuid.UUID) (*model.Car, er
 func (m *MongoRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	collection := m.client.Database("mdb").Collection("car")
 	filter := bson.M{"_id": id}
-	_, err := collection.DeleteOne(ctx, filter)
+	res, err := collection.DeleteOne(ctx, filter)
 	if err != nil {
 		return fmt.Errorf("MongoRepository-Delete: error in method collection.DeleteOne(): %w", err)
+	}
+	if res.DeletedCount == 0 {
+		return mongo.ErrNoDocuments
 	}
 	return nil
 }
@@ -70,9 +73,12 @@ func (m *MongoRepository) Update(ctx context.Context, car *model.Car) error {
 			"isrunning":      car.IsRunning,
 		},
 	}
-	_, err := collection.UpdateOne(ctx, filter, update)
+	res, err := collection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return fmt.Errorf("MongoRepository-Update: error in method collection.UpdateOne(): %w", err)
+	}
+	if res.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
 	}
 	return nil
 }

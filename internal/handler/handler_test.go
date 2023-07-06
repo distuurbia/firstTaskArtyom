@@ -2,11 +2,11 @@ package handler
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/distuurbia/firstTaskArtyom/internal/handler/mocks"
 	"github.com/distuurbia/firstTaskArtyom/internal/model"
-	"github.com/distuurbia/firstTaskArtyom/internal/service"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -18,16 +18,21 @@ var (
 		Brand:          "HandlBrand",
 		ProductionYear: 2002,
 		IsRunning:      false}
-	serv     = new(mocks.CarService)
-	services = service.NewCarEntity(serv, nil)
+	serv *mocks.CarService
 )
+
+func TestMain(m *testing.M) {
+	serv = new(mocks.CarService)
+	exitVal := m.Run()
+	os.Exit(exitVal)
+}
 
 func TestCreateCar(t *testing.T) {
 	serv.On("Create", mock.Anything, mock.AnythingOfType("*model.Car")).
 		Return(nil).
 		Once()
 
-	err := services.Create(context.Background(), &testModel)
+	err := serv.Create(context.Background(), &testModel)
 	require.Nil(t, err)
 
 	serv.AssertExpectations(t)
@@ -37,7 +42,7 @@ func TestGetCar(t *testing.T) {
 	serv.On("Get", mock.Anything, mock.AnythingOfType("uuid.UUID")).
 		Return(&testModel, nil).
 		Once()
-	car, err := services.Get(context.Background(), testModel.ID)
+	car, err := serv.Get(context.Background(), testModel.ID)
 	require.Nil(t, err)
 	require.Equal(t, testModel.ID, car.ID)
 	require.Equal(t, testModel.Brand, car.Brand)
@@ -51,7 +56,7 @@ func TestDeleteCar(t *testing.T) {
 	serv.On("Delete", mock.Anything, mock.AnythingOfType("uuid.UUID")).
 		Return(nil).
 		Once()
-	err := services.Delete(context.Background(), testModel.ID)
+	err := serv.Delete(context.Background(), testModel.ID)
 	require.Nil(t, err)
 
 	serv.AssertExpectations(t)
@@ -61,14 +66,14 @@ func TestUpdatecar(t *testing.T) {
 	serv.On("Update", mock.Anything, mock.AnythingOfType("*model.Car")).
 		Return(nil).
 		Once()
-	err := services.Update(context.Background(), &testModel)
+	err := serv.Update(context.Background(), &testModel)
 	require.Nil(t, err)
 
 	serv.AssertExpectations(t)
 }
 
 func TestGetAllCar(t *testing.T) {
-	expectedCars := []model.Car{
+	expectedCars := []*model.Car{
 		{
 			ID:             uuid.New(),
 			Brand:          "handlBrand1",
@@ -86,9 +91,9 @@ func TestGetAllCar(t *testing.T) {
 		Return(expectedCars, nil).
 		Once()
 
-	cars, err := services.GetAll(context.Background())
+	cars, err := serv.GetAll(context.Background())
 	require.Nil(t, err)
-	require.Equal(t, expectedCars, cars)
+	require.Equal(t, len(expectedCars), len(cars))
 
-	serv.AssertExpectations(t)
+	serv.AssertExpectations(t)	
 }

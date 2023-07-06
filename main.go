@@ -138,6 +138,7 @@ func main() {
 		handl           *handler.Handler
 		
 	)
+	database = 1
 	const timeSecondSleep time.Duration = 5
 	cfg := config.Config{}
 	if err := env.Parse(&cfg); err != nil {
@@ -159,11 +160,11 @@ func main() {
 	// go consumer(redisClient)
 	// go producer(redisClient, timeSecondSleep)
 
-	fmt.Print("Choose database:\n 1)Postgres\n 2)MongoDB\n")
-	_, err = fmt.Scan(&database)
-	if err != nil {
-		fmt.Printf("Failed to read: %v", err)
-	}
+	// fmt.Print("Choose database:\n 1)Postgres\n 2)MongoDB\n")
+	// _, err = fmt.Scan(&database)
+	// if err != nil {
+	// 	fmt.Printf("Failed to read: %v", err)
+	// }
 	v := validator.New()
 	switch database {
 	case PostgresDatabase:

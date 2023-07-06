@@ -5,7 +5,7 @@ services:
     environment:
       ACCESS_TOKEN_SIGNATURE: "secretAccess"
       REFRESH_TOKEN_SIGNATURE: "secretRefresh"
-      POSTGRES_PATH: "postgres://artempg:artempg@localhost:5432/db"
+      POSTGRES_PATH: "postgres://artempg:artempg@person:5432/db"
       MONGO_PATH: "mongodb://artemmdb:artemmdb@localhost:27017"
     ports:
       - 5433:5433

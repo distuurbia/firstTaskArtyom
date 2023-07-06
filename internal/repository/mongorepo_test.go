@@ -9,40 +9,11 @@ import (
 
 	"github.com/distuurbia/firstTaskArtyom/internal/model"
 	"github.com/google/uuid"
-	"github.com/ory/dockertest"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var mrpc *MongoRepository
-
-func SetupMongo() (*mongo.Client, func(), error) {
-	pool, err := dockertest.NewPool("")
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not construct pool: %w", err)
-	}
-	resource, err := pool.Run("mongo", "latest", []string{
-		"MONGO_INITDB_ROOT_USERNAME=artemmdb",
-		"MONGO_INITDB_ROOT_PASSWORD=artemmdb",
-		"MONGO_INITDB_DATABASE=mdb"})
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not start resource: %w", err)
-	}
-
-	port := resource.GetPort("27017/tcp")
-	mongoURL := fmt.Sprintf("mongodb://artemmdb:artemmdb@localhost:%s", port)
-	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(mongoURL))
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to connect mongoDB: %w", err)
-	}
-	cleanup := func() {
-		client.Disconnect(context.Background())
-		pool.Purge(resource)
-	}
-	return client, cleanup, nil
-}
 
 func TestCreateMongo(t *testing.T) {
 	err := mrpc.Create(context.Background(), &testModel)
@@ -127,25 +98,16 @@ func TestStrangeDataMongo(t *testing.T) {
 }
 
 func TestDeleteByFakeIDMongo(t *testing.T) {
-	defer recoveryFunction()
-	var err error
-	testModel.ID, err = uuid.Parse("Some UUID")
-	if err != nil {
-		t.Fatalf("failed to parse id")
-	}
-	err = mrpc.Delete(context.Background(), testModel.ID)
-	require.NoError(t, err)
+	testModel.ID, _ = uuid.Parse("Some UUID")
+	err := mrpc.Delete(context.Background(), testModel.ID)
+	require.ErrorIs(t, err, mongo.ErrNoDocuments)
 }
 
 func TestNotValidIDMongo(t *testing.T) {
-	defer recoveryFunction()
 	var err error
-	testModel.ID, err = uuid.Parse("1")
-	if err != nil {
-		t.Fatalf("failed to parse id")
-	}
+	testModel.ID, _ = uuid.Parse("1")
 	err = mrpc.Update(context.Background(), &testModel)
-	require.NoError(t, err)
+	require.ErrorIs(t, err, mongo.ErrNoDocuments)
 }
 
 func recoveryFunction() {
