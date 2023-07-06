@@ -37,7 +37,7 @@ curl  http://localhost:5433/signup \
 curl  http://localhost:5433/login \
     --header "Content-Type: application/json" \
     --request "POST" \
-    --data '{"login": "mohhamad", "password": "bombhasbeenplanted"}'
+    --data '{"login": "admin", "password": "admin"}'
 
 ### Refresh Token
 curl  http://localhost:5433/refresh \

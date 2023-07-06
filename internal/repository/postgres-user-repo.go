@@ -18,7 +18,7 @@ func (p *PgRepository) SignUpUser(ctx context.Context, user *model.User) error {
 	if count != 0 {
 		return fmt.Errorf("PgRepository-SignUpUser: the login is occupied by another user")
 	}
-	_, err = p.pool.Exec(ctx, "INSERT INTO users (id, login, password) VALUES ($1, $2, $3)", user.ID, user.Login, user.Password)
+	_, err = p.pool.Exec(ctx, "INSERT INTO users (id, login, password, admin) VALUES ($1, $2, $3, $4)", user.ID, user.Login, user.Password, user.Admin)
 	if err != nil {
 		return fmt.Errorf("PgRepository-SignUpUser: error in method r.pool.Exec(): %w", err)
 	}
@@ -26,14 +26,15 @@ func (p *PgRepository) SignUpUser(ctx context.Context, user *model.User) error {
 }
 
 // GetByLogin get password and id of user.
-func (p *PgRepository) GetByLogin(ctx context.Context, login string) ([]byte, uuid.UUID, error) {
+func (p *PgRepository) GetByLogin(ctx context.Context, login string) ([]byte, uuid.UUID, bool, error) {
 	var id uuid.UUID
 	var password []byte
-	err := p.pool.QueryRow(ctx, "SELECT password, id FROM users WHERE login = $1", login).Scan(&password, &id)
+	var admin bool
+	err := p.pool.QueryRow(ctx, "SELECT password, id, admin FROM users WHERE login = $1", login).Scan(&password, &id, &admin)
 	if err != nil {
-		return nil, uuid.Nil, fmt.Errorf("PgRepository-GetByLOgin: error in method r.pool.QuerryRow(): %w", err)
+		return nil, uuid.Nil, false, fmt.Errorf("PgRepository-GetByLOgin: error in method r.pool.QuerryRow(): %w", err)
 	}
-	return password, id, nil
+	return password, id, admin, nil
 }
 
 // AddToken adds a token to the user's record in the database.

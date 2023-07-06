@@ -29,22 +29,23 @@ func (m *MongoRepository) SignUpUser(ctx context.Context, user *model.User) erro
 }
 
 // GetByLogin retrieves the user's password from the database by login.
-func (m *MongoRepository) GetByLogin(ctx context.Context, login string) ([]byte, uuid.UUID, error) {
+func (m *MongoRepository) GetByLogin(ctx context.Context, login string) ([]byte, uuid.UUID, bool, error) {
 	collection := m.client.Database("mdb").Collection("users")
 	var result struct {
 		ID       uuid.UUID        `bson:"_id"`
 		Password primitive.Binary `bson:"password"`
+		Admin	 bool			  `bson:"admin"`
 	}
 	err := collection.FindOne(ctx, bson.M{"login": login}).Decode(&result)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, uuid.Nil, fmt.Errorf("MongoRepository-GetByLogin: user not found")
+			return nil, uuid.Nil, false, fmt.Errorf("MongoRepository-GetByLogin: user not found")
 		}
-		return nil, uuid.Nil, fmt.Errorf("MongoRepository-GetByLogin: error in FindOne: %w", err)
+		return nil, uuid.Nil, false, fmt.Errorf("MongoRepository-GetByLogin: error in FindOne: %w", err)
 	}
 	passwordCopy := make([]byte, len(result.Password.Data))
 	copy(passwordCopy, result.Password.Data)
-	return passwordCopy, result.ID, nil
+	return passwordCopy, result.ID, result.Admin, nil
 }
 
 // AddToken adds a token to the user's record in the database.

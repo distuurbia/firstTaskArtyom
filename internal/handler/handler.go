@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/distuurbia/firstTaskArtyom/internal/model"
-	"github.com/distuurbia/firstTaskArtyom/internal/service"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"gopkg.in/go-playground/validator.v9"
@@ -32,7 +31,8 @@ type CarService interface {
 // UserService is an interface that defines the methods on User entity.
 type UserService interface {
 	SignUpUser(ctx context.Context, user *model.User) (string, string, error)
-	GetByLogin(ctx context.Context, login string, refreshToken []byte, passw []byte) (bool, uuid.UUID, error)
+	SignUpAdmin(ctx context.Context, user *model.User) (aT, rT string, e error)
+	GetByLogin(ctx context.Context, login string, password []byte) (string, string, bool, error)
 	AddToken(ctx context.Context, id uuid.UUID, token []byte) error
 	RefreshToken(ctx context.Context, accessToken string, refreshToken string) (string, string, error)
 }
@@ -255,6 +255,7 @@ func (h *Handler) SignUpUser(c echo.Context) error {
 			"Password":      newUser.Password,
 			"Access Toke":   accessToken,
 			"Refresh Token": refreshToken,
+			"Admin":		 newUser.Admin,
 		}).Errorf("failed to get data: %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Handler-SignUpUser: error in method h.entityService.SignUpUser() :")
 	}
@@ -263,6 +264,52 @@ func (h *Handler) SignUpUser(c echo.Context) error {
 		"Refresh Token : ": refreshToken,
 	})
 }
+
+// SignUpAdmin handles the POST request to create a new admin.
+// @Summary SignUpAdmin
+// @Description Create admin
+// @Security ApiKeyAuth
+// @ID create-admin
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param input body InputData true "info"
+// @Success 201 {string} string "token"
+// @Failure 400 {object} error
+// @Router /signupAdmin [post]
+func (h *Handler) SignUpAdmin(c echo.Context) error {
+	var newUser model.User
+	newUser.ID = uuid.New()
+	requestData := &InputData{}
+	err := c.Bind(requestData)
+	if err != nil {
+		log.Errorf("error: %v", err)
+		return c.JSON(http.StatusBadRequest, "Handler-SignUpAdmin: Invalid request payload")
+	}
+	newUser.Login = requestData.Login
+	newUser.Password = []byte(requestData.Password)
+	err = h.validate.StructCtx(c.Request().Context(), newUser)
+	if err != nil {
+		log.Errorf("error: %v", err)
+		return c.JSON(http.StatusBadRequest, "Not valid data")
+	}
+	accessToken, refreshToken, err := h.userService.SignUpAdmin(c.Request().Context(), &newUser)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"Login":         newUser.Login,
+			"Password":      newUser.Password,
+			"Access Token":   accessToken,
+			"Refresh Token": refreshToken,
+			"Admin":		 newUser.Admin,
+		}).Errorf("failed to get data: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Handler-SignUpAdmin: error in method h.entityService.SignUpUser() :")
+	}
+	return c.JSON(http.StatusCreated, echo.Map{
+		"Access Token : ":  accessToken,
+		"Refresh Token : ": refreshToken,
+	})
+}
+
 
 // GetByLogin checked password.
 // @Summary GetByLogin
@@ -295,27 +342,21 @@ func (h *Handler) GetByLogin(c echo.Context) error {
 		log.Errorf("error: %v", err)
 		return c.JSON(http.StatusBadRequest, "Not valid data: password field is empty")
 	}
-	var verify bool
-	accessToken, refreshToken, err := service.GenerateTokens(user.ID)
-	if err != nil {
-		log.Errorf("error: %v", err)
-		return echo.NewHTTPError(http.StatusBadRequest, "Handler-GetByLogin-GenerateTokens: challenge id must have uuid format")
-	}
-	verify, user.ID, err = h.userService.GetByLogin(c.Request().Context(), user.Login, []byte(refreshToken), user.Password)
+
+	accessToken, refreshToken, admin, err := h.userService.GetByLogin(c.Request().Context(), user.Login, user.Password)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Login":         user.Login,
 			"Password":      user.Password,
-			"Access Toke":   accessToken,
+			"Access Token":   accessToken,
 			"Refresh Token": refreshToken,
+			"Admin": admin,
 		}).Errorf("failed to get data: %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Handler-GetByLogin: error in method GetByLogin() :")
 	}
-	if !verify {
-		return echo.ErrUnauthorized
-	}
 	return c.JSON(http.StatusOK, echo.Map{
-		"Access Token : ": accessToken,
+		"Access Token: ": accessToken,
+		"Refresh Token: ": refreshToken,
 	})
 }
 

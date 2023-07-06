@@ -28,7 +28,6 @@ definitions:
         type: integer
     required:
     - brand
-    - id
     type: object
 host: localhost:5433
 info:
@@ -267,6 +266,32 @@ paths:
           description: Bad Request
           schema: {}
       summary: SignUpUser
+      tags:
+      - auth
+  /signupAdmin:
+    post:
+      consumes:
+      - application/json
+      description: Create admin
+      operationId: create-admin
+      parameters:
+      - description: info
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handler.InputData'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: token
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema: {}
+      summary: SignUpAdmin
       tags:
       - auth
   /upload:

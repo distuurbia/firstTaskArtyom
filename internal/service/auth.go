@@ -34,12 +34,13 @@ func CheckPasswordHash(password, hash []byte) bool {
 }
 
 // GenerateTokens created Tokens (Access and Refresh).
-func GenerateTokens(id uuid.UUID) (aT, rT string, e error) {
+func GenerateTokens(id uuid.UUID, admin bool) (aT, rT string, e error) {
 	cfg := config.Config{}
 	if err := env.Parse(&cfg); err != nil {
 		log.Fatalf("Failed to parse config: %v", err)
 	}
 	accessTokenClaims := jwt.MapClaims{
+		"admin": admin, 
 		"id":  id.String(),
 		"exp": time.Now().Add(AccessTime).Unix(),
 	}
@@ -49,6 +50,7 @@ func GenerateTokens(id uuid.UUID) (aT, rT string, e error) {
 		return "", "", fmt.Errorf("error in generating access token: %w", err)
 	}
 	refreshTokenClaims := jwt.MapClaims{
+		"admin": admin, 
 		"id":  id.String(),
 		"exp": time.Now().Add(RefreshTime).Unix(),
 	}
@@ -61,22 +63,24 @@ func GenerateTokens(id uuid.UUID) (aT, rT string, e error) {
 }
 
 // CheckTokenValidity returns id by claims.
-func CheckTokenValidity(token, signature string) (uuid.UUID, error) {
+func CheckTokenValidity(token, signature string) (uuid.UUID, bool, error) {
 	var tokenID uuid.UUID
+	var admin bool
 	thisToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
 		return []byte(signature), nil
 	})
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("invalid token: %w", err)
+		return uuid.Nil, admin, fmt.Errorf("invalid token: %w", err)
 	}
 	if !thisToken.Valid {
-		return uuid.Nil, fmt.Errorf("invalid token")
+		return uuid.Nil, admin, fmt.Errorf("invalid token")
 	}
 	if claims, ok := thisToken.Claims.(jwt.MapClaims); ok && thisToken.Valid {
 		tokenID, err = uuid.Parse(claims["id"].(string))
 		if err != nil {
-			return uuid.Nil, fmt.Errorf("failed to parse id")
+			return uuid.Nil, admin, fmt.Errorf("failed to parse id")
 		}
+		admin = claims["admin"].(bool)
 	}
-	return tokenID, nil
+	return tokenID,  admin, nil
 }

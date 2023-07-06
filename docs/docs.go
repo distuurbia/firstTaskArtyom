@@ -373,6 +373,45 @@ const docTemplate = `{
                 }
             }
         },
+        "/signupAdmin": {
+            "post": {
+                "description": "Create admin",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "SignUpAdmin",
+                "operationId": "create-admin",
+                "parameters": [
+                    {
+                        "description": "info",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.InputData"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "token",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {}
+                    }
+                }
+            }
+        },
         "/upload": {
             "post": {
                 "description": "Upload Image",
@@ -437,8 +476,7 @@ const docTemplate = `{
         "model.Car": {
             "type": "object",
             "required": [
-                "brand",
-                "id"
+                "brand"
             ],
             "properties": {
                 "brand": {

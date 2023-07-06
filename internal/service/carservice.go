@@ -55,15 +55,15 @@ func (s *CarEntity) Create(ctx context.Context, car *model.Car) error {
 
 // Update updates an existing car.
 func (s *CarEntity) Update(ctx context.Context, car *model.Car) error {
-	err := s.rdsRep.DeleteCache(ctx, car.ID)
-	if err != nil {
-		return fmt.Errorf("CarEntity-Update: error in method s.rpc.DeleteCache: %w", err)
-	}
-	err = s.rdsRep.SetCache(ctx, car)
-	if err != nil {
-		return fmt.Errorf("CarEntity-Update: error in method s.rdsRep.SetCache: %w", err)
-	}
-	err = s.rpc.Update(ctx, car)
+	_ = s.rdsRep.DeleteCache(ctx, car.ID)
+	// if err != nil {
+	// 	return fmt.Errorf("CarEntity-Update: error in method s.rpc.DeleteCache: %w", err)
+	// }
+	_ = s.rdsRep.SetCache(ctx, car)
+	// if err != nil {
+	// 	return fmt.Errorf("CarEntity-Update: error in method s.rdsRep.SetCache: %w", err)
+	// }
+	err := s.rpc.Update(ctx, car)
 	if err != nil {
 		return fmt.Errorf("CarEntity-Update: error in method s.rpc.Update: %w", err)
 	}
@@ -81,24 +81,24 @@ func (s *CarEntity) Get(ctx context.Context, id uuid.UUID) (*model.Car, error) {
 		if err != nil {
 			return nil, fmt.Errorf("CarEntity-Get: error in method s.rpc.Get: %w", err)
 		}
-		err = s.rdsRep.SetCache(ctx, car)
-		if err != nil {
-			return nil, fmt.Errorf("CarEntity-Get: error in method s.rdsRep.SetCache: %w", err)
-		}
+		_ = s.rdsRep.SetCache(ctx, car)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("CarEntity-Get: error in method s.rdsRep.SetCache: %w", err)
+		// }
 	}
 	return car, nil
 }
 
 // Delete deletes a car by its ID.
 func (s *CarEntity) Delete(ctx context.Context, id uuid.UUID) error {
-	err := s.rdsRep.DeleteCache(ctx, id)
-	if err != nil {
-		return fmt.Errorf("CarEntity-Delete: error in method s.rdsRep.DeleteCache: %w", err)
-	}
-	err = s.rpc.Delete(ctx, id)
+	err := s.rpc.Delete(ctx, id)
 	if err != nil {
 		return fmt.Errorf("CarEntity-Delete: error in method s.rpc.Delete: %w", err)
 	}
+	_ = s.rdsRep.DeleteCache(ctx, id)
+	// if err != nil {
+	// 	return fmt.Errorf("CarEntity-Delete: error in method s.rdsRep.DeleteCache: %w", err)
+	// }
 	return nil
 }
 

@@ -138,7 +138,6 @@ func main() {
 		handl           *handler.Handler
 		
 	)
-	database = 1
 	const timeSecondSleep time.Duration = 5
 	cfg := config.Config{}
 	if err := env.Parse(&cfg); err != nil {
@@ -160,11 +159,11 @@ func main() {
 	// go consumer(redisClient)
 	// go producer(redisClient, timeSecondSleep)
 
-	// fmt.Print("Choose database:\n 1)Postgres\n 2)MongoDB\n")
-	// _, err = fmt.Scan(&database)
-	// if err != nil {
-	// 	fmt.Printf("Failed to read: %v", err)
-	// }
+	fmt.Print("Choose database:\n 1)Postgres\n 2)MongoDB\n")
+	_, err = fmt.Scan(&database)
+	if err != nil {
+		fmt.Printf("Failed to read: %v", err)
+	}
 	v := validator.New()
 	switch database {
 	case PostgresDatabase:
@@ -204,6 +203,7 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.POST("/signup", handl.SignUpUser)
+	e.POST("/signupAdmin", handl.SignUpAdmin, custommiddleware.JWTMiddlewareAdmin)
 	e.POST("/login", handl.GetByLogin)
 	e.POST("/refresh", handl.RefreshToken)
 	e.POST("/upload", handl.UploadImage)
@@ -211,7 +211,7 @@ func main() {
 	e.POST("/car", handl.Create, custommiddleware.JWTMiddleware)
 	e.GET("/car/:id", handl.Get, custommiddleware.JWTMiddleware)
 	e.PUT("/car", handl.Update, custommiddleware.JWTMiddleware)
-	e.DELETE("/car/:id", handl.Delete, custommiddleware.JWTMiddleware)
+	e.DELETE("/car/:id", handl.Delete, custommiddleware.JWTMiddlewareAdmin)
 	e.GET("/car", handl.GetAll, custommiddleware.JWTMiddleware)
 
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
