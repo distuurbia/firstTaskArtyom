@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/caarlos0/env"
 	"github.com/distuurbia/firstTaskArtyom/internal/config"
 	"github.com/distuurbia/firstTaskArtyom/internal/model"
-	"github.com/caarlos0/env"
 	"github.com/google/uuid"
 )
 
@@ -33,7 +33,7 @@ func NewUserEntity(urpc UserRepository) *UserEntity {
 }
 
 // SignUpUser creates a new user.
-func (u *UserEntity) SignUpUser(ctx context.Context, user *model.User) (aT, rT string, e error) {
+func (u *UserEntity) SignUpUser(ctx context.Context, user *model.User) (aT, rT string, er error) {
 	var err error
 	user.Password, err = HashPassword(user.Password)
 	if err != nil {
@@ -55,7 +55,7 @@ func (u *UserEntity) SignUpUser(ctx context.Context, user *model.User) (aT, rT s
 }
 
 // SignUpAdmin creates a new user.
-func (u *UserEntity) SignUpAdmin(ctx context.Context, user *model.User) (aT, rT string, e error) {
+func (u *UserEntity) SignUpAdmin(ctx context.Context, user *model.User) (aT, rT string, er error) {
 	var err error
 	user.Password, err = HashPassword(user.Password)
 	if err != nil {
@@ -78,24 +78,24 @@ func (u *UserEntity) SignUpAdmin(ctx context.Context, user *model.User) (aT, rT 
 }
 
 // GetByLogin compare passwords and return id.
-func (u *UserEntity) GetByLogin(ctx context.Context, login string, password []byte) (string, string, bool, error) {
+func (u *UserEntity) GetByLogin(ctx context.Context, login string, password []byte) (aT, rT string, er error) {
 	hash, id, admin, err := u.urpc.GetByLogin(ctx, login)
 	if err != nil {
-		return "", "", false, fmt.Errorf("UserEntity-GetByLogin: error in method u.urpc.GetByLogin: %w", err)
+		return "", "", fmt.Errorf("UserEntity-GetByLogin: error in method u.urpc.GetByLogin: %w", err)
 	}
 	verify := CheckPasswordHash(password, hash)
 	if !verify {
-		return "", "", false, fmt.Errorf("UserEntity-GetByLogin-CheckPasswordHash: passwords not matched: %w", err)
+		return "", "", fmt.Errorf("UserEntity-GetByLogin-CheckPasswordHash: passwords not matched: %w", err)
 	}
 	accessToken, refreshToken, err := GenerateTokens(id, admin)
 	if err != nil {
-		return "", "", false, fmt.Errorf("UserEntity-SignUpAdmin-GenerateTokens: error in generating refresh token: %w", err)
+		return "", "", fmt.Errorf("UserEntity-GetByLogin-GenerateTokens: error in generating refresh token: %w", err)
 	}
 	err = u.AddToken(ctx, id, []byte(refreshToken))
 	if err != nil {
-		return "", "", false, fmt.Errorf("UserEntity-SignUpAdmin-AddToken: error in method u.AddToken: %w", err)
+		return "", "", fmt.Errorf("UserEntity-GetByLogin-AddToken: error in method u.AddToken: %w", err)
 	}
-	return accessToken, refreshToken, admin, nil
+	return accessToken, refreshToken, nil
 }
 
 // AddToken insert RefreshToken into database.
@@ -110,7 +110,7 @@ func (u *UserEntity) AddToken(ctx context.Context, id uuid.UUID, token []byte) e
 }
 
 // RefreshToken checks incoming tokens for validity.
-func (u *UserEntity) RefreshToken(ctx context.Context, accessToken, refreshToken string) (aT, rT string, e error) {
+func (u *UserEntity) RefreshToken(ctx context.Context, accessToken, refreshToken string) (aT, rT string, er error) {
 	cfg := config.Config{}
 	if err := env.Parse(&cfg); err != nil {
 		log.Fatalf("Failed to parse config: %v", err)

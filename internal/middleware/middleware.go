@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/distuurbia/firstTaskArtyom/internal/config"
 	"github.com/caarlos0/env"
+	"github.com/distuurbia/firstTaskArtyom/internal/config"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 )
@@ -48,7 +48,7 @@ func JWTMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-// JWTMiddleware is a middleware function that performs JWT.
+// JWTMiddlewareAdmin is a middleware function that performs JWT.
 func JWTMiddlewareAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 	cfg := config.Config{}
 	if err := env.Parse(&cfg); err != nil {

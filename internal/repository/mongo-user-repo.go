@@ -29,12 +29,12 @@ func (m *MongoRepository) SignUpUser(ctx context.Context, user *model.User) erro
 }
 
 // GetByLogin retrieves the user's password from the database by login.
-func (m *MongoRepository) GetByLogin(ctx context.Context, login string) ([]byte, uuid.UUID, bool, error) {
+func (m *MongoRepository) GetByLogin(ctx context.Context, login string) (pswCopy []byte, id uuid.UUID, adm bool, er error) {
 	collection := m.client.Database("mdb").Collection("users")
 	var result struct {
 		ID       uuid.UUID        `bson:"_id"`
 		Password primitive.Binary `bson:"password"`
-		Admin	 bool			  `bson:"admin"`
+		Admin    bool             `bson:"admin"`
 	}
 	err := collection.FindOne(ctx, bson.M{"login": login}).Decode(&result)
 	if err != nil {

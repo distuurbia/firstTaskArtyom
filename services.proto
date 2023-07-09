@@ -1,0 +1,113 @@
+syntax = "proto3";
+
+option go_package = "github.com/distuurbia/firstTaskArtyom/proto_services";
+
+message Car {
+  UUID ID = 1;
+  string Brand = 2;
+  int64 ProductionYear = 3;
+  bool IsRunning = 4;
+}
+
+message User {
+  UUID ID = 1;
+  string Login = 2;
+  bytes Password = 3;
+  bytes RefreshToken = 4;
+  bool Admin = 5;
+}
+
+service CarService {
+  rpc CreateCar(CreateCarRequest) returns (CreateCarResponse) {}
+  rpc GetCar(GetCarRequest) returns (GetCarResponse) {}
+  rpc DeleteCar(DeleteCarRequest) returns (DeleteCarResponse) {}
+  rpc UpdateCar(UpdateCarRequest) returns (UpdateCarResponse) {}
+  rpc GetAllCars(GetAllCarsRequest) returns (GetAllCarsResponse) {}
+}
+
+service UserService {
+  rpc SignUpUser(SignUpUserRequest) returns (SignUpUserResponse) {}
+  rpc SignUpAdmin(SignUpAdminRequest) returns (SignUpAdminResponse) {}
+  rpc GetByLogin(GetByLoginRequest) returns (GetByLoginResponse) {}
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse) {}
+}
+
+message UUID {
+  string value = 1;
+}
+
+message CreateCarRequest {
+  Car car = 1;
+}
+
+message CreateCarResponse {
+  Car car = 1;
+}
+
+message GetCarRequest {
+  UUID ID = 1;
+}
+
+message GetCarResponse {
+  Car car = 1;
+}
+
+message DeleteCarRequest {
+  UUID ID = 1;
+}
+
+message DeleteCarResponse {
+  UUID ID = 1;
+}
+
+message UpdateCarRequest {
+  Car car = 1;
+}
+
+message UpdateCarResponse {
+  Car car = 1;
+}
+
+message GetAllCarsRequest {}
+
+message GetAllCarsResponse {
+  repeated Car cars = 1;
+}
+
+message SignUpUserRequest {
+  User user = 1;
+}
+
+message SignUpUserResponse {
+  string accessToken = 1;
+  string refreshToken = 2;
+}
+
+message SignUpAdminRequest {
+  User user = 1;
+}
+
+message SignUpAdminResponse {
+  string accessToken = 1;
+  string refreshToken = 2;
+}
+
+message GetByLoginRequest {
+  string login = 1;
+  bytes password = 2;
+}
+
+message GetByLoginResponse {
+  string accessToken = 1;
+  string refreshToken = 2;
+}
+
+message RefreshTokenRequest {
+  string accessToken = 1;
+  string refreshToken = 2;
+}
+
+message RefreshTokenResponse {
+  string accessToken = 1;
+  string refreshToken = 2;
+}

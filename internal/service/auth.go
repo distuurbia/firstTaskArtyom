@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/distuurbia/firstTaskArtyom/internal/config"
 	"github.com/caarlos0/env"
+	"github.com/distuurbia/firstTaskArtyom/internal/config"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -40,9 +40,9 @@ func GenerateTokens(id uuid.UUID, admin bool) (aT, rT string, e error) {
 		log.Fatalf("Failed to parse config: %v", err)
 	}
 	accessTokenClaims := jwt.MapClaims{
-		"admin": admin, 
-		"id":  id.String(),
-		"exp": time.Now().Add(AccessTime).Unix(),
+		"admin": admin,
+		"id":    id.String(),
+		"exp":   time.Now().Add(AccessTime).Unix(),
 	}
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessTokenClaims)
 	accessTokenString, err := accessToken.SignedString([]byte(cfg.AccessTokenSignature))
@@ -50,9 +50,9 @@ func GenerateTokens(id uuid.UUID, admin bool) (aT, rT string, e error) {
 		return "", "", fmt.Errorf("error in generating access token: %w", err)
 	}
 	refreshTokenClaims := jwt.MapClaims{
-		"admin": admin, 
-		"id":  id.String(),
-		"exp": time.Now().Add(RefreshTime).Unix(),
+		"admin": admin,
+		"id":    id.String(),
+		"exp":   time.Now().Add(RefreshTime).Unix(),
 	}
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshTokenClaims)
 	refreshTokenString, err := refreshToken.SignedString([]byte(cfg.RefreshTokenSignature))
@@ -82,5 +82,5 @@ func CheckTokenValidity(token, signature string) (uuid.UUID, bool, error) {
 		}
 		admin = claims["admin"].(bool)
 	}
-	return tokenID,  admin, nil
+	return tokenID, admin, nil
 }

@@ -14,7 +14,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-
 func TestCreateMongo(t *testing.T) {
 	err := mrpc.Create(context.Background(), &testModel)
 	require.NoError(t, err)

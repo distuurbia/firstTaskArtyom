@@ -95,5 +95,5 @@ func TestGetAllCar(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, len(expectedCars), len(cars))
 
-	serv.AssertExpectations(t)	
+	serv.AssertExpectations(t)
 }

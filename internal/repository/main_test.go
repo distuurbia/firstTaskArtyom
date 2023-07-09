@@ -19,7 +19,6 @@ import (
 
 var mrpc *MongoRepository
 
-
 var rpc *PgRepository
 
 var testModel = model.Car{
@@ -52,7 +51,7 @@ func RandBool() bool {
 const (
 	pgUsername = "artempg"
 	pgPassword = "artempg"
-	pgDB = "db"
+	pgDB       = "db"
 )
 
 func SetupMongo() (*mongo.Client, func(), error) {
@@ -145,4 +144,3 @@ func TestMain(m *testing.M) {
 
 	os.Exit(exitCode)
 }
-

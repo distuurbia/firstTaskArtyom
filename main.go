@@ -5,20 +5,20 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
+	"net"
 
 	_ "github.com/distuurbia/firstTaskArtyom/docs"
 	"github.com/distuurbia/firstTaskArtyom/internal/config"
+	"github.com/distuurbia/firstTaskArtyom/proto_services"
+	"google.golang.org/grpc"
+
+	"github.com/caarlos0/env"
 	"github.com/distuurbia/firstTaskArtyom/internal/handler"
-	custommiddleware "github.com/distuurbia/firstTaskArtyom/internal/middleware"
 	"github.com/distuurbia/firstTaskArtyom/internal/repository"
 	"github.com/distuurbia/firstTaskArtyom/internal/service"
-	"github.com/caarlos0/env"
 	"github.com/go-redis/redis/v8"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
-	echoSwagger "github.com/swaggo/echo-swagger"
+
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"gopkg.in/go-playground/validator.v9"
@@ -56,10 +56,6 @@ func connectMongo() (*mongo.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error in method mongo.Connect(): %v", err)
 	}
-	// err = client.Ping(context.Background(), nil)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("error in method client.Ping(): %v", err)
-	// }
 	return client, nil
 }
 
@@ -67,58 +63,14 @@ func connectRedis() (*redis.Client, error) {
 	cfg := config.Config{}
 	if err := env.Parse(&cfg); err != nil {
 		log.Fatalf("Failed to parse config: %v", err)
+		return nil, err
 	}
 	client := redis.NewClient(&redis.Options{
 		Addr:     cfg.RedisAddress,
 		Password: cfg.RedisPassword,
 		DB:       0,
 	})
-	// _, err := client.Ping(client.Context()).Result()
-	// if err != nil {
-	// 	return nil, fmt.Errorf("error in method client.Ping(): %v", err)
-	// }
 	return client, nil
-}
-
-// consumer read messages from redis stream and deleted it.
-func consumer(client *redis.Client) {
-	ctx := context.Background()
-	for {
-		result, err := client.XRead(ctx, &redis.XReadArgs{
-			Streams: []string{"messagestream", "0"},
-			Count:   1,
-			Block:   0,
-		}).Result()
-
-		if err != nil {
-			log.Fatalf("Error when reading messages from Redis Stream:%v", err)
-		}
-
-		for _, message := range result[0].Messages {
-			fmt.Println("Received message:", message.Values["message"])
-			_, err := client.XDel(ctx, "messagestream", message.ID).Result()
-			if err != nil {
-				log.Fatalf("Error when deleting message from Redis Stream:%v", err)
-			}
-		}
-	}
-}
-
-// producer write in redis stream message once every 5 seconds.
-func producer(client *redis.Client, timeSecondSleep time.Duration) {
-	ctx := context.Background()
-	for {
-		_, err := client.XAdd(ctx, &redis.XAddArgs{
-			Stream: "messagestream",
-			Values: map[string]interface{}{
-				"message": fmt.Sprintf("It's working %s", time.Now()),
-			},
-		}).Result()
-		if err != nil {
-			log.Fatalf("Error when writing a message to Redis Stream:%v", err)
-		}
-		time.Sleep(timeSecondSleep * time.Second)
-	}
 }
 
 // @title Car API
@@ -134,11 +86,9 @@ func producer(client *redis.Client, timeSecondSleep time.Duration) {
 //nolint:funlen //Disabled because project have too many connections.
 func main() {
 	var (
-		database        int
-		handl           *handler.Handler
-		
+		database int
+		handl    *handler.GRPCHandler
 	)
-	const timeSecondSleep time.Duration = 5
 	cfg := config.Config{}
 	if err := env.Parse(&cfg); err != nil {
 		log.Fatalf("Failed to parse config: %v", err)
@@ -155,10 +105,6 @@ func main() {
 		}
 	}()
 	repoRedis := repository.NewRedisRepository(redisClient)
-
-	// go consumer(redisClient)
-	// go producer(redisClient, timeSecondSleep)
-
 	fmt.Print("Choose database:\n 1)Postgres\n 2)MongoDB\n")
 	_, err = fmt.Scan(&database)
 	if err != nil {
@@ -167,54 +113,47 @@ func main() {
 	v := validator.New()
 	switch database {
 	case PostgresDatabase:
-		pool, err := connectPostgres()
-		if err != nil {
-			fmt.Printf("Failed to connect to Postgres: %v", err)
+		pool, errPGX := connectPostgres()
+		if errPGX != nil {
+			fmt.Printf("Failed to connect to Postgres: %v", errPGX)
 		}
 		defer pool.Close()
 
 		repoPostgres := repository.NewPgRepository(pool)
 		carService := service.NewCarEntity(repoPostgres, repoRedis)
 		userService := service.NewUserEntity(repoPostgres)
-		handl = handler.NewHandler(carService, userService, v)
+		handl = handler.NewGRPCHandler(carService, userService, v)
 
 	case MongoDBDatabase:
-		mongoClient, err := connectMongo()
-		if err != nil {
-			fmt.Printf("Failed to connect to MongoDB: %v", err)
+		mongoClient, errMongo := connectMongo()
+		if errMongo != nil {
+			fmt.Printf("Failed to connect to MongoDB: %v", errMongo)
 		}
 		defer func() {
-			err := mongoClient.Disconnect(context.Background())
+			errMongo := mongoClient.Disconnect(context.Background())
 			if err != nil {
-				fmt.Printf("Failed to disconnect from MongoDB: %v", err)
+				fmt.Printf("Failed to disconnect from MongoDB: %v", errMongo)
 			}
 		}()
 
 		repoMongo := repository.NewMongoRepository(mongoClient)
 		carService := service.NewCarEntity(repoMongo, repoRedis)
 		userService := service.NewUserEntity(repoMongo)
-		handl = handler.NewHandler(carService, userService, v)
+		handl = handler.NewGRPCHandler(carService, userService, v)
 
 	default:
 		//nolint:gocritic
 		log.Fatal("Not correct number!")
 	}
-	e := echo.New()
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-	e.POST("/signup", handl.SignUpUser)
-	e.POST("/signupAdmin", handl.SignUpAdmin, custommiddleware.JWTMiddlewareAdmin)
-	e.POST("/login", handl.GetByLogin)
-	e.POST("/refresh", handl.RefreshToken)
-	e.POST("/upload", handl.UploadImage)
-	e.GET("/download/:filename", handl.DownloadImage)
-	e.POST("/car", handl.Create, custommiddleware.JWTMiddleware)
-	e.GET("/car/:id", handl.Get, custommiddleware.JWTMiddleware)
-	e.PUT("/car", handl.Update, custommiddleware.JWTMiddleware)
-	e.DELETE("/car/:id", handl.Delete, custommiddleware.JWTMiddlewareAdmin)
-	e.GET("/car", handl.GetAll, custommiddleware.JWTMiddleware)
-
-	e.GET("/swagger/*", echoSwagger.WrapHandler)
-	address := fmt.Sprintf(":%d", cfg.Port)
-	e.Logger.Fatal(e.Start(address))
+	lis, err := net.Listen("tcp", "localhost:5433")
+	if err != nil {
+		log.Fatalf("cannot connect listener: %s", err)
+	}
+	serverRegistrar := grpc.NewServer()
+	proto_services.RegisterCarServiceServer(serverRegistrar, handl)
+	proto_services.RegisterUserServiceServer(serverRegistrar, handl)
+	err = serverRegistrar.Serve(lis)
+	if err != nil {
+		log.Fatalf("cannot serve: %s", err)
+	}
 }

@@ -26,7 +26,7 @@ func (p *PgRepository) SignUpUser(ctx context.Context, user *model.User) error {
 }
 
 // GetByLogin get password and id of user.
-func (p *PgRepository) GetByLogin(ctx context.Context, login string) ([]byte, uuid.UUID, bool, error) {
+func (p *PgRepository) GetByLogin(ctx context.Context, login string) (psw []byte, idd uuid.UUID, adm bool, er error) {
 	var id uuid.UUID
 	var password []byte
 	var admin bool
