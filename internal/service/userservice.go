@@ -4,9 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"log"
 
-	"github.com/caarlos0/env"
 	"github.com/distuurbia/firstTaskArtyom/internal/config"
 	"github.com/distuurbia/firstTaskArtyom/internal/model"
 	"github.com/google/uuid"
@@ -23,12 +21,14 @@ type UserRepository interface {
 // UserEntity represents the service that interacts with the repository.
 type UserEntity struct {
 	urpc UserRepository
+	cfg  *config.Config
 }
 
 // NewUserEntity creates a new instance of the service.
-func NewUserEntity(urpc UserRepository) *UserEntity {
+func NewUserEntity(urpc UserRepository, cfg *config.Config) *UserEntity {
 	return &UserEntity{
 		urpc: urpc,
+		cfg:  cfg,
 	}
 }
 
@@ -43,36 +43,13 @@ func (u *UserEntity) SignUpUser(ctx context.Context, user *model.User) (aT, rT s
 	if err != nil {
 		return "", "", fmt.Errorf("UserEntity-SignUpUser: error in method s.rpc.signupuser: %w", err)
 	}
-	accessToken, refreshToken, err := GenerateTokens(user.ID, user.Admin)
+	accessToken, refreshToken, err := GenerateTokens(user.ID, user.Admin, u.cfg)
 	if err != nil {
 		return "", "", fmt.Errorf("UserEntity-SignUpUser-GenerateTokens: error in generating refresh token: %w", err)
 	}
 	err = u.AddToken(ctx, user.ID, []byte(refreshToken))
 	if err != nil {
 		return "", "", fmt.Errorf("UserEntity-SignUpUser: error in method u.AddToken: %w", err)
-	}
-	return accessToken, refreshToken, nil
-}
-
-// SignUpAdmin creates a new user.
-func (u *UserEntity) SignUpAdmin(ctx context.Context, user *model.User) (aT, rT string, er error) {
-	var err error
-	user.Password, err = HashPassword(user.Password)
-	if err != nil {
-		return "", "", fmt.Errorf("UserEntity-SignUpAdmin-HashPassword: error in hashing password: %w", err)
-	}
-	user.Admin = true
-	err = u.urpc.SignUpUser(ctx, user)
-	if err != nil {
-		return "", "", fmt.Errorf("UserEntity-SignUpAdmin: error in method s.rpc.signupuser: %w", err)
-	}
-	accessToken, refreshToken, err := GenerateTokens(user.ID, user.Admin)
-	if err != nil {
-		return "", "", fmt.Errorf("UserEntity-SignUpAdmin-GenerateTokens: error in generating refresh token: %w", err)
-	}
-	err = u.AddToken(ctx, user.ID, []byte(refreshToken))
-	if err != nil {
-		return "", "", fmt.Errorf("UserEntity-SignUpAdmin: error in method u.AddToken: %w", err)
 	}
 	return accessToken, refreshToken, nil
 }
@@ -87,7 +64,7 @@ func (u *UserEntity) GetByLogin(ctx context.Context, login string, password []by
 	if !verify {
 		return "", "", fmt.Errorf("UserEntity-GetByLogin-CheckPasswordHash: passwords not matched: %w", err)
 	}
-	accessToken, refreshToken, err := GenerateTokens(id, admin)
+	accessToken, refreshToken, err := GenerateTokens(id, admin, u.cfg)
 	if err != nil {
 		return "", "", fmt.Errorf("UserEntity-GetByLogin-GenerateTokens: error in generating refresh token: %w", err)
 	}
@@ -111,15 +88,11 @@ func (u *UserEntity) AddToken(ctx context.Context, id uuid.UUID, token []byte) e
 
 // RefreshToken checks incoming tokens for validity.
 func (u *UserEntity) RefreshToken(ctx context.Context, accessToken, refreshToken string) (aT, rT string, er error) {
-	cfg := config.Config{}
-	if err := env.Parse(&cfg); err != nil {
-		log.Fatalf("Failed to parse config: %v", err)
-	}
-	accessID, accessAdmin, err := CheckTokenValidity(accessToken, cfg.AccessTokenSignature)
+	accessID, accessAdmin, err := CheckTokenValidity(accessToken, u.cfg.AccessTokenSignature)
 	if err != nil {
 		return "", "", fmt.Errorf("UserEntity-RefreshToken-CheckTokenValidity: token expired: %w", err)
 	}
-	refreshID, refreshAdmin, err := CheckTokenValidity(refreshToken, cfg.RefreshTokenSignature)
+	refreshID, refreshAdmin, err := CheckTokenValidity(refreshToken, u.cfg.RefreshTokenSignature)
 	if err != nil {
 		return "", "", fmt.Errorf("UserEntity-RefreshToken-CheckTokenValidity: token expired: %w", err)
 	}
@@ -138,7 +111,7 @@ func (u *UserEntity) RefreshToken(ctx context.Context, accessToken, refreshToken
 	if !verified {
 		return "", "", fmt.Errorf("UserEntity-RefreshToken-CheckPasswordHash: error - refreshToken invalid")
 	}
-	accessToken, refreshToken, err = GenerateTokens(accessID, accessAdmin)
+	accessToken, refreshToken, err = GenerateTokens(accessID, accessAdmin, u.cfg)
 	if err != nil {
 		return "", "", fmt.Errorf("UserEntity-RefreshToken-GenerateTokens: error in generating refresh token: %w", err)
 	}

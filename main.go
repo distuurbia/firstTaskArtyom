@@ -9,6 +9,7 @@ import (
 
 	_ "github.com/distuurbia/firstTaskArtyom/docs"
 	"github.com/distuurbia/firstTaskArtyom/internal/config"
+	"github.com/distuurbia/firstTaskArtyom/internal/interceptor"
 	"github.com/distuurbia/firstTaskArtyom/proto_services"
 	"google.golang.org/grpc"
 
@@ -31,11 +32,7 @@ const (
 	MongoDBDatabase = 2
 )
 
-func connectPostgres() (*pgxpool.Pool, error) {
-	cfg := config.Config{}
-	if err := env.Parse(&cfg); err != nil {
-		log.Fatalf("Failed to parse config: %v", err)
-	}
+func connectPostgres(cfg *config.Config) (*pgxpool.Pool, error) {
 	conf, err := pgxpool.ParseConfig(cfg.PostgresPath)
 	if err != nil {
 		return nil, fmt.Errorf("error in method pgxpool.ParseConfig: %v", err)
@@ -46,11 +43,8 @@ func connectPostgres() (*pgxpool.Pool, error) {
 	}
 	return pool, nil
 }
-func connectMongo() (*mongo.Client, error) {
-	cfg := config.Config{}
-	if err := env.Parse(&cfg); err != nil {
-		log.Fatalf("Failed to parse config: %v", err)
-	}
+
+func connectMongo(cfg *config.Config) (*mongo.Client, error) {
 	clientOptions := options.Client().ApplyURI(cfg.MongoPath)
 	client, err := mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
@@ -59,12 +53,7 @@ func connectMongo() (*mongo.Client, error) {
 	return client, nil
 }
 
-func connectRedis() (*redis.Client, error) {
-	cfg := config.Config{}
-	if err := env.Parse(&cfg); err != nil {
-		log.Fatalf("Failed to parse config: %v", err)
-		return nil, err
-	}
+func connectRedis(cfg *config.Config) (*redis.Client, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     cfg.RedisAddress,
 		Password: cfg.RedisPassword,
@@ -88,13 +77,14 @@ func main() {
 	var (
 		database int
 		handl    *handler.GRPCHandler
+		cfg  	 *config.Config
 	)
-	cfg := config.Config{}
-	if err := env.Parse(&cfg); err != nil {
+	
+	if err := env.Parse(cfg); err != nil {
 		log.Fatalf("Failed to parse config: %v", err)
 	}
 
-	redisClient, err := connectRedis()
+	redisClient, err := connectRedis(cfg)
 	if err != nil {
 		log.Fatalf("Failed to connect to Redis: %v", err)
 	}
@@ -113,7 +103,7 @@ func main() {
 	v := validator.New()
 	switch database {
 	case PostgresDatabase:
-		pool, errPGX := connectPostgres()
+		pool, errPGX := connectPostgres(cfg)
 		if errPGX != nil {
 			fmt.Printf("Failed to connect to Postgres: %v", errPGX)
 		}
@@ -121,11 +111,11 @@ func main() {
 
 		repoPostgres := repository.NewPgRepository(pool)
 		carService := service.NewCarEntity(repoPostgres, repoRedis)
-		userService := service.NewUserEntity(repoPostgres)
+		userService := service.NewUserEntity(repoPostgres, cfg)
 		handl = handler.NewGRPCHandler(carService, userService, v)
 
 	case MongoDBDatabase:
-		mongoClient, errMongo := connectMongo()
+		mongoClient, errMongo := connectMongo(cfg)
 		if errMongo != nil {
 			fmt.Printf("Failed to connect to MongoDB: %v", errMongo)
 		}
@@ -138,7 +128,7 @@ func main() {
 
 		repoMongo := repository.NewMongoRepository(mongoClient)
 		carService := service.NewCarEntity(repoMongo, repoRedis)
-		userService := service.NewUserEntity(repoMongo)
+		userService := service.NewUserEntity(repoMongo, cfg)
 		handl = handler.NewGRPCHandler(carService, userService, v)
 
 	default:
@@ -149,9 +139,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot connect listener: %s", err)
 	}
-	serverRegistrar := grpc.NewServer()
+	customInterceptor := interceptor.NewCustomInterceptor(cfg)
+	serverRegistrar := grpc.NewServer(
+		grpc.UnaryInterceptor(customInterceptor.UnaryInterceptor),
+	)
 	proto_services.RegisterCarServiceServer(serverRegistrar, handl)
 	proto_services.RegisterUserServiceServer(serverRegistrar, handl)
+	proto_services.RegisterImageServiceServer(serverRegistrar, handl)
 	err = serverRegistrar.Serve(lis)
 	if err != nil {
 		log.Fatalf("cannot serve: %s", err)

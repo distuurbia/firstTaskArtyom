@@ -31,6 +31,24 @@ service UserService {
   rpc GetByLogin(GetByLoginRequest) returns (GetByLoginResponse) {}
   rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse) {}
 }
+service ImageService {
+  rpc DownloadImage(DownloadImageRequest) returns (DownloadImageResponse) {}
+  rpc UploadImage(UploadImageRequest) returns (UploadImageResponse) {}
+}
+
+message DownloadImageRequest {
+  string imgName = 1;
+}
+
+message DownloadImageResponse {
+  bytes img = 1;
+}
+
+message UploadImageRequest {
+  string imgName = 1;
+}
+
+message UploadImageResponse {}
 
 message UUID {
   string value = 1;
@@ -75,7 +93,8 @@ message GetAllCarsResponse {
 }
 
 message SignUpUserRequest {
-  User user = 1;
+  string login = 1;
+  string password = 2;
 }
 
 message SignUpUserResponse {
@@ -84,7 +103,8 @@ message SignUpUserResponse {
 }
 
 message SignUpAdminRequest {
-  User user = 1;
+  string login = 1;
+  string password = 2;
 }
 
 message SignUpAdminResponse {
@@ -94,7 +114,7 @@ message SignUpAdminResponse {
 
 message GetByLoginRequest {
   string login = 1;
-  bytes password = 2;
+  string password = 2;
 }
 
 message GetByLoginResponse {

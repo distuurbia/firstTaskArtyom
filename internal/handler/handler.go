@@ -2,14 +2,17 @@
 package handler
 
 import (
+	"bufio"
 	"context"
+	"io"
+	"os"
+	"path/filepath"
 
 	"github.com/distuurbia/firstTaskArtyom/internal/model"
 	"github.com/distuurbia/firstTaskArtyom/proto_services"
 	"github.com/google/uuid"
-	"gopkg.in/go-playground/validator.v9"
-
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/go-playground/validator.v9"
 )
 
 // CarService is an interface that defines the methods on Car entity.
@@ -24,7 +27,6 @@ type CarService interface {
 // UserService is an interface that defines the methods on User entity.
 type UserService interface {
 	SignUpUser(ctx context.Context, user *model.User) (string, string, error)
-	SignUpAdmin(ctx context.Context, user *model.User) (string, string, error)
 	GetByLogin(ctx context.Context, login string, password []byte) (string, string, error)
 	RefreshToken(ctx context.Context, accessToken string, refreshToken string) (string, string, error)
 }
@@ -36,6 +38,7 @@ type GRPCHandler struct {
 	validate    *validator.Validate
 	proto_services.UnimplementedCarServiceServer
 	proto_services.UnimplementedUserServiceServer
+	proto_services.UnimplementedImageServiceServer
 }
 
 // NewGRPCHandler creates a new instance of the GRPCHandler struct.
@@ -192,13 +195,11 @@ type InputData struct {
 }
 
 // SignUpUser handles the POST request to create a new user.
-//
-//nolint:dupl //because it is just testing exercise for a little work with a different owner code
 func (h *GRPCHandler) SignUpUser(ctx context.Context, req *proto_services.SignUpUserRequest) (*proto_services.SignUpUserResponse, error) {
 	var newUser model.User
 	newUser.ID = uuid.New()
-	newUser.Login = req.User.Login
-	newUser.Password = req.User.Password
+	newUser.Login = req.Login
+	newUser.Password = []byte(req.Password)
 	err := h.validate.StructCtx(ctx, newUser)
 	if err != nil {
 		log.Errorf("failed to validate error: %v", err)
@@ -219,20 +220,19 @@ func (h *GRPCHandler) SignUpUser(ctx context.Context, req *proto_services.SignUp
 }
 
 // SignUpAdmin handles the POST request to create a new admin.
-//
-//nolint:dupl //because it is just testing exercise for a little work with a different owner code
 func (h *GRPCHandler) SignUpAdmin(ctx context.Context, req *proto_services.SignUpAdminRequest) (*proto_services.SignUpAdminResponse, error) {
 	var newUser model.User
 	newUser.ID = uuid.New()
 
-	newUser.Login = req.User.Login
-	newUser.Password = req.User.Password
+	newUser.Login = req.Login
+	newUser.Password = []byte(req.Password)
+	newUser.Admin = true
 	err := h.validate.StructCtx(ctx, newUser)
 	if err != nil {
 		log.Errorf("failed to validate error: %v", err)
 		return &proto_services.SignUpAdminResponse{}, err
 	}
-	accessToken, refreshToken, err := h.userService.SignUpAdmin(ctx, &newUser)
+	accessToken, refreshToken, err := h.userService.SignUpUser(ctx, &newUser)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"Login":         newUser.Login,
@@ -250,7 +250,7 @@ func (h *GRPCHandler) SignUpAdmin(ctx context.Context, req *proto_services.SignU
 func (h *GRPCHandler) GetByLogin(ctx context.Context, req *proto_services.GetByLoginRequest) (*proto_services.GetByLoginResponse, error) {
 	var user model.User
 	user.Login = req.Login
-	user.Password = req.Password
+	user.Password = []byte(req.Password)
 	err := h.validate.StructCtx(ctx, user)
 	if err != nil {
 		log.Errorf("failed to validate error: %v", err)
@@ -287,88 +287,70 @@ func (h *GRPCHandler) RefreshToken(ctx context.Context, req *proto_services.Refr
 	return &proto_services.RefreshTokenResponse{AccessToken: accessToken, RefreshToken: refreshToken}, nil
 }
 
-// // UploadImage upload a picture to server.
-// // @Summary UploadImage
-// // @Description Upload Image
-// // @ID upload-image
-// // @Tags image
-// // @Accept json
-// // @Produce json
-// // @Param image formData file true "Image file"
-// // @Success 201 {object} string
-// // @Failure 400 {object} error
-// // @Router /upload [post]
-// func (h *Handler) UploadImage(c echo.Context) error {
-// 	file, err := c.FormFile("image")
-// 	if err != nil {
-// 		log.Errorf("error: %v", err)
-// 		return c.String(http.StatusBadRequest, "Failed to retrieve file")
-// 	}
-// 	src, err := file.Open()
-// 	if err != nil {
-// 		log.Errorf("error: %v", err)
-// 		return c.String(http.StatusInternalServerError, "Failed to open file")
-// 	}
-// 	defer func() {
-// 		errClose := src.Close()
-// 		if errClose != nil {
-// 			log.Errorf("error: %v", errClose)
-// 		}
-// 	}()
-// 	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), filepath.Ext(file.Filename))
-// 	//nolint:gosec // Disabled for this line as security is verified elsewhere.
-// 	dst, err := os.Create(filepath.Join("images", "upload", filename))
-// 	if err != nil {
-// 		log.Errorf("error: %v", err)
-// 		return c.String(http.StatusInternalServerError, "Failed to create file")
-// 	}
-// 	defer func() {
-// 		errClose := dst.Close()
-// 		if errClose != nil {
-// 			log.Errorf("error: %v", errClose)
-// 		}
-// 	}()
-// 	_, err = io.Copy(dst, src)
-// 	if err != nil {
-// 		log.Errorf("error: %v", err)
-// 		return c.String(http.StatusInternalServerError, "Failed to copy file")
-// 	}
-// 	return c.JSON(http.StatusOK, echo.Map{
-// 		"filename": filename,
-// 	})
-// }
+// DownloadImage downloads image from given path
+func (h *GRPCHandler) DownloadImage(_ context.Context, req *proto_services.DownloadImageRequest) (*proto_services.DownloadImageResponse, error) {
+	imgname := req.ImgName
+	imgpath := filepath.Join("images", imgname)
+	cleanPath := filepath.Clean(imgpath)
+	file, err := os.Open(cleanPath)
+	if err != nil {
+		log.Errorf("failed to open file error: %v", err)
+		return &proto_services.DownloadImageResponse{}, err
+	}
+	defer func() {
+		errClose := file.Close()
+		if errClose != nil {
+			log.Errorf("failed to close file error: %v", errClose)
+		}
+	}()
 
-// // DownloadImage show picture in request.
-// // @Summary DownloadImage
-// // @Description Download Image
-// // @ID download-image
-// // @Tags image
-// // @Accept json
-// // @Produce json
-// // @Param filename path string true "Image filename"
-// // @Success 200 {object} object
-// // @Failure 400 {object} error
-// // @Router /download/{filename} [get]
-// func (h *Handler) DownloadImage(c echo.Context) error {
-// 	imgname := c.Param("filename")
-// 	imgpath := filepath.Join("images", "upload", imgname)
-// 	cleanPath := filepath.Clean(imgpath)
-// 	file, err := os.Open(cleanPath)
-// 	if err != nil {
-// 		log.Errorf("error: %v", err)
-// 		return c.String(http.StatusInternalServerError, "Failed to open file")
-// 	}
-// 	defer func() {
-// 		errClose := file.Close()
-// 		if errClose != nil {
-// 			log.Errorf("error: %v", errClose)
-// 		}
-// 	}()
-// 	contentType := mime.TypeByExtension(filepath.Ext(imgname))
-// 	c.Response().Header().Set("Content-Type", contentType)
-// 	if _, err := io.Copy(c.Response(), file); err != nil {
-// 		log.Errorf("error: %v", err)
-// 		return c.String(http.StatusInternalServerError, "Failed to copy file")
-// 	}
-// 	return nil
-// }
+	stat, err := file.Stat()
+	if err != nil {
+		log.Errorf("failed to check file stat error: %v", err)
+		return &proto_services.DownloadImageResponse{}, err
+	}
+
+	img := make([]byte, stat.Size())
+	_, err = bufio.NewReader(file).Read(img)
+	if err != nil && err != io.EOF {
+		log.Errorf("failed to check file stat error: %v", err)
+		return &proto_services.DownloadImageResponse{}, err
+	}
+	protoImage := &proto_services.DownloadImageResponse{Img: img}
+	return protoImage, nil
+}
+
+// UploadImage uploads image from given path
+func (h *GRPCHandler) UploadImage(_ context.Context, req *proto_services.UploadImageRequest) (*proto_services.UploadImageResponse, error) {
+	imgname := req.ImgName
+	imgpath := filepath.Join("images", imgname)
+	cleanPath := filepath.Clean(imgpath)
+	file, err := os.Open(cleanPath)
+	if err != nil {
+		log.Errorf("failed to open file error: %v", err)
+		return &proto_services.UploadImageResponse{}, err
+	}
+	defer func() {
+		errClose := file.Close()
+		if errClose != nil {
+			log.Errorf("failed to close file error: %v", errClose)
+		}
+	}()
+	dst, err := os.Create(filepath.Join("images", "upload", "uploadedSmile.png"))
+	if err != nil {
+		log.Errorf("error: %v", err)
+		return &proto_services.UploadImageResponse{}, err
+	}
+	defer func() {
+		errClose := dst.Close()
+		if errClose != nil {
+			log.Errorf("error: %v", errClose)
+		}
+	}()
+	_, err = io.Copy(dst, file)
+	if err != nil {
+		log.Errorf("error: %v", err)
+		return &proto_services.UploadImageResponse{}, err
+	}
+	return &proto_services.UploadImageResponse{}, nil
+}

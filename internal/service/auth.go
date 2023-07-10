@@ -2,10 +2,8 @@ package service
 
 import (
 	"fmt"
-	"log"
 	"time"
 
-	"github.com/caarlos0/env"
 	"github.com/distuurbia/firstTaskArtyom/internal/config"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -34,11 +32,7 @@ func CheckPasswordHash(password, hash []byte) bool {
 }
 
 // GenerateTokens created Tokens (Access and Refresh).
-func GenerateTokens(id uuid.UUID, admin bool) (aT, rT string, e error) {
-	cfg := config.Config{}
-	if err := env.Parse(&cfg); err != nil {
-		log.Fatalf("Failed to parse config: %v", err)
-	}
+func GenerateTokens(id uuid.UUID, admin bool, cfg *config.Config) (aT, rT string, e error) {
 	accessTokenClaims := jwt.MapClaims{
 		"admin": admin,
 		"id":    id.String(),
