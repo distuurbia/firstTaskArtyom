@@ -256,7 +256,6 @@ func (h *GRPCHandler) GetByLogin(ctx context.Context, req *proto_services.GetByL
 		log.Errorf("failed to validate error: %v", err)
 		return &proto_services.GetByLoginResponse{}, err
 	}
-
 	accessToken, refreshToken, err := h.userService.GetByLogin(ctx, user.Login, user.Password)
 	if err != nil {
 		log.WithFields(log.Fields{
