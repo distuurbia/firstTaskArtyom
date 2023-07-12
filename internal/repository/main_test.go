@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/distuurbia/firstTaskArtyom/internal/model"
+	"github.com/go-redis/redis/v8"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ory/dockertest"
@@ -20,6 +21,8 @@ import (
 var mrpc *MongoRepository
 
 var rpc *PgRepository
+
+var rdsRps *RedisRepository
 
 var testModel = model.Car{
 	ID:             uuid.New(),
@@ -120,6 +123,28 @@ func SetupPostgres() (*pgxpool.Pool, func(), error) {
 	return dbpool, cleanup, nil
 }
 
+func SetupRedis() (*redis.Client, func(), error) {
+	pool, err := dockertest.NewPool("")
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not construct pool: %w", err)
+	}
+	resource, err := pool.Run("redis", "latest", []string{
+		"REDIS_PASSWOES=artemrdb"})
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not run the pool: %w", err)
+	}
+
+	client := redis.NewClient(&redis.Options{
+		Addr: fmt.Sprintf("localhost:%s", resource.GetPort("6379/tcp")),
+		DB:   0,
+	})
+	cleanup := func() {
+		client.Close()
+		pool.Purge(resource)
+	}
+	return client, cleanup, nil
+}
+
 func TestMain(m *testing.M) {
 	dbpool, cleanupPgx, err := SetupPostgres()
 	if err != nil {
@@ -137,10 +162,18 @@ func TestMain(m *testing.M) {
 	}
 	mrpc = NewMongoRepository(client)
 
+	rdsClient, cleanupRds, err := SetupRedis()
+	if err != nil {
+		fmt.Println(err)
+		cleanupRds()
+		os.Exit(1)
+	}
+	rdsRps = NewRedisRepository(rdsClient)
+
 	exitCode := m.Run()
 
 	cleanupPgx()
 	cleanupMongo()
-
+	cleanupRds()
 	os.Exit(exitCode)
 }

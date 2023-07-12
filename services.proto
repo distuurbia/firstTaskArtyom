@@ -32,8 +32,8 @@ service UserService {
   rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse) {}
 }
 service ImageService {
-  rpc DownloadImage(DownloadImageRequest) returns (DownloadImageResponse) {}
-  rpc UploadImage(UploadImageRequest) returns (UploadImageResponse) {}
+  rpc DownloadImage(DownloadImageRequest) returns (stream DownloadImageResponse) {}
+  rpc UploadImage(stream UploadImageRequest) returns (UploadImageResponse) {}
 }
 
 message DownloadImageRequest {
@@ -45,7 +45,7 @@ message DownloadImageResponse {
 }
 
 message UploadImageRequest {
-  string imgName = 1;
+  bytes img = 1;
 }
 
 message UploadImageResponse {}

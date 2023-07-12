@@ -53,41 +53,28 @@ func connectMongo(cfg *config.Config) (*mongo.Client, error) {
 	return client, nil
 }
 
-func connectRedis(cfg *config.Config) (*redis.Client, error) {
+func connectRedis(cfg *config.Config) *redis.Client {
 	client := redis.NewClient(&redis.Options{
 		Addr:     cfg.RedisAddress,
 		Password: cfg.RedisPassword,
 		DB:       0,
 	})
-	return client, nil
+	return client
 }
-
-// @title Car API
-// @version 1.0
-
-// @host localhost:5433
-// @BasePath /
-
-// @securityDefinitions.apikey ApiKeyAuth
-// @in header
-// @name Authorization
 
 //nolint:funlen //Disabled because project have too many connections.
 func main() {
 	var (
 		database int
 		handl    *handler.GRPCHandler
-		cfg  	 *config.Config
+		cfg      config.Config
 	)
-	
-	if err := env.Parse(cfg); err != nil {
+
+	if err := env.Parse(&cfg); err != nil {
 		log.Fatalf("Failed to parse config: %v", err)
 	}
 
-	redisClient, err := connectRedis(cfg)
-	if err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
-	}
+	redisClient := connectRedis(&cfg)
 	defer func() {
 		errClose := redisClient.Close()
 		if errClose != nil {
@@ -96,14 +83,14 @@ func main() {
 	}()
 	repoRedis := repository.NewRedisRepository(redisClient)
 	fmt.Print("Choose database:\n 1)Postgres\n 2)MongoDB\n")
-	_, err = fmt.Scan(&database)
+	_, err := fmt.Scan(&database)
 	if err != nil {
 		fmt.Printf("Failed to read: %v", err)
 	}
 	v := validator.New()
 	switch database {
 	case PostgresDatabase:
-		pool, errPGX := connectPostgres(cfg)
+		pool, errPGX := connectPostgres(&cfg)
 		if errPGX != nil {
 			fmt.Printf("Failed to connect to Postgres: %v", errPGX)
 		}
@@ -111,11 +98,11 @@ func main() {
 
 		repoPostgres := repository.NewPgRepository(pool)
 		carService := service.NewCarEntity(repoPostgres, repoRedis)
-		userService := service.NewUserEntity(repoPostgres, cfg)
+		userService := service.NewUserEntity(repoPostgres, &cfg)
 		handl = handler.NewGRPCHandler(carService, userService, v)
 
 	case MongoDBDatabase:
-		mongoClient, errMongo := connectMongo(cfg)
+		mongoClient, errMongo := connectMongo(&cfg)
 		if errMongo != nil {
 			fmt.Printf("Failed to connect to MongoDB: %v", errMongo)
 		}
@@ -128,7 +115,7 @@ func main() {
 
 		repoMongo := repository.NewMongoRepository(mongoClient)
 		carService := service.NewCarEntity(repoMongo, repoRedis)
-		userService := service.NewUserEntity(repoMongo, cfg)
+		userService := service.NewUserEntity(repoMongo, &cfg)
 		handl = handler.NewGRPCHandler(carService, userService, v)
 
 	default:
@@ -139,7 +126,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot connect listener: %s", err)
 	}
-	customInterceptor := interceptor.NewCustomInterceptor(cfg)
+	customInterceptor := interceptor.NewCustomInterceptor(&cfg)
 	serverRegistrar := grpc.NewServer(
 		grpc.UnaryInterceptor(customInterceptor.UnaryInterceptor),
 	)

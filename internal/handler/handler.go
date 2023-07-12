@@ -2,7 +2,6 @@
 package handler
 
 import (
-	"bufio"
 	"context"
 	"io"
 	"os"
@@ -287,14 +286,14 @@ func (h *GRPCHandler) RefreshToken(ctx context.Context, req *proto_services.Refr
 }
 
 // DownloadImage downloads image from given path
-func (h *GRPCHandler) DownloadImage(_ context.Context, req *proto_services.DownloadImageRequest) (*proto_services.DownloadImageResponse, error) {
+func (h *GRPCHandler) DownloadImage(req *proto_services.DownloadImageRequest, stream proto_services.ImageService_DownloadImageServer) error {
 	imgname := req.ImgName
 	imgpath := filepath.Join("images", imgname)
 	cleanPath := filepath.Clean(imgpath)
 	file, err := os.Open(cleanPath)
 	if err != nil {
 		log.Errorf("failed to open file error: %v", err)
-		return &proto_services.DownloadImageResponse{}, err
+		return err
 	}
 	defer func() {
 		errClose := file.Close()
@@ -303,53 +302,52 @@ func (h *GRPCHandler) DownloadImage(_ context.Context, req *proto_services.Downl
 		}
 	}()
 
-	stat, err := file.Stat()
-	if err != nil {
-		log.Errorf("failed to check file stat error: %v", err)
-		return &proto_services.DownloadImageResponse{}, err
+	bufferSize := 4096
+	buffer := make([]byte, bufferSize)
+	for {
+		bytesRead, err := file.Read(buffer)
+		if err != nil && err != io.EOF {
+			log.Errorf("failed to read file error: %v", err)
+			return err
+		}
+		if bytesRead == 0 {
+			break
+		}
+		err = stream.Send(&proto_services.DownloadImageResponse{Img: buffer[:bytesRead]})
+		if err != nil {
+			log.Errorf("failed to send GRPC response: %v", err)
+			return err
+		}
 	}
-
-	img := make([]byte, stat.Size())
-	_, err = bufio.NewReader(file).Read(img)
-	if err != nil && err != io.EOF {
-		log.Errorf("failed to check file stat error: %v", err)
-		return &proto_services.DownloadImageResponse{}, err
-	}
-	protoImage := &proto_services.DownloadImageResponse{Img: img}
-	return protoImage, nil
+	return nil
 }
 
 // UploadImage uploads image from given path
-func (h *GRPCHandler) UploadImage(_ context.Context, req *proto_services.UploadImageRequest) (*proto_services.UploadImageResponse, error) {
-	imgname := req.ImgName
-	imgpath := filepath.Join("images", imgname)
-	cleanPath := filepath.Clean(imgpath)
-	file, err := os.Open(cleanPath)
-	if err != nil {
-		log.Errorf("failed to open file error: %v", err)
-		return &proto_services.UploadImageResponse{}, err
-	}
-	defer func() {
-		errClose := file.Close()
-		if errClose != nil {
-			log.Errorf("failed to close file error: %v", errClose)
-		}
-	}()
+func (h *GRPCHandler) UploadImage(stream proto_services.ImageService_UploadImageServer) error {
 	dst, err := os.Create(filepath.Join("images", "upload", "uploadedSmile.png"))
 	if err != nil {
-		log.Errorf("error: %v", err)
-		return &proto_services.UploadImageResponse{}, err
+		log.Errorf("failed to create file error: %v", err)
+		return err
 	}
 	defer func() {
 		errClose := dst.Close()
 		if errClose != nil {
-			log.Errorf("error: %v", errClose)
+			log.Errorf("failed to close error: %v", errClose)
 		}
 	}()
-	_, err = io.Copy(dst, file)
-	if err != nil {
-		log.Errorf("error: %v", err)
-		return &proto_services.UploadImageResponse{}, err
+	for {
+		fileChunk, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Errorf("failed to receive data chunk error: %v", err)
+			return err
+		}
+		_, err = dst.Write(fileChunk.Img)
+		if err != nil {
+			log.Errorf("failed to write data chunk to the dst file error: %v", err)
+		}
 	}
-	return &proto_services.UploadImageResponse{}, nil
+	return nil
 }

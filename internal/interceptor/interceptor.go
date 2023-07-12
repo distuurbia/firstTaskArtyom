@@ -21,7 +21,8 @@ type CustomInterceptor struct {
 	cfg *config.Config
 }
 
-func NewCustomInterceptor (cfg *config.Config) *CustomInterceptor{
+// NewCustomInterceptor returns the poiner on CustomInterceptor struct
+func NewCustomInterceptor(cfg *config.Config) *CustomInterceptor {
 	return &CustomInterceptor{cfg: cfg}
 }
 

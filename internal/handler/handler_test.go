@@ -35,8 +35,8 @@ func TestMain(m *testing.M) {
 func TestCreateCar(t *testing.T) {
 	servCar := new(mocks.CarService)
 	servCar.On("Create", mock.Anything, mock.AnythingOfType("*model.Car")).
-	Return(nil).
-	Once()
+		Return(nil).
+		Once()
 	GRPCHandl := NewGRPCHandler(servCar, nil, validator.New())
 	protoResponse, err := GRPCHandl.CreateCar(context.Background(), &proto_services.CreateCarRequest{Car: &testProtoCar})
 	require.NoError(t, err)
@@ -49,8 +49,8 @@ func TestCreateCar(t *testing.T) {
 func TestGetCar(t *testing.T) {
 	servCar := new(mocks.CarService)
 	servCar.On("Get", mock.Anything, mock.AnythingOfType("uuid.UUID")).
-	Return(&testModel, nil).
-	Once()
+		Return(&testModel, nil).
+		Once()
 	GRPCHandl := NewGRPCHandler(servCar, nil, validator.New())
 	protoResponse, err := GRPCHandl.GetCar(context.Background(), &proto_services.GetCarRequest{ID: testProtoCar.ID})
 	require.NoError(t, err)
@@ -113,11 +113,11 @@ func TestGetAllCar(t *testing.T) {
 	servCar.AssertExpectations(t)
 }
 
-func TestSignUpUser(t *testing.T){
+func TestSignUpUser(t *testing.T) {
 	servUser := new(mocks.UserService)
 	servUser.On("SignUpUser", mock.Anything, mock.AnythingOfType("*model.User")).
-	Return("accessToken", "refreshToken", nil).
-	Once()
+		Return("accessToken", "refreshToken", nil).
+		Once()
 	GRPCHandl := NewGRPCHandler(nil, servUser, validator.New())
 	protoResponse, err := GRPCHandl.SignUpUser(context.Background(), &proto_services.SignUpUserRequest{Login: "testUser", Password: "testUser"})
 	require.NoError(t, err)
@@ -126,11 +126,11 @@ func TestSignUpUser(t *testing.T){
 	servUser.AssertExpectations(t)
 }
 
-func TestSignUpAdmin(t *testing.T){
+func TestSignUpAdmin(t *testing.T) {
 	servUser := new(mocks.UserService)
 	servUser.On("SignUpUser", mock.Anything, mock.AnythingOfType("*model.User")).
-	Return("accessToken", "refreshToken", nil).
-	Once()
+		Return("accessToken", "refreshToken", nil).
+		Once()
 	GRPCHandl := NewGRPCHandler(nil, servUser, validator.New())
 	protoResponse, err := GRPCHandl.SignUpAdmin(context.Background(), &proto_services.SignUpAdminRequest{Login: "testUser", Password: "testUser"})
 	require.NoError(t, err)
@@ -139,11 +139,11 @@ func TestSignUpAdmin(t *testing.T){
 	servUser.AssertExpectations(t)
 }
 
-func TestGetByLogin(t *testing.T){
+func TestGetByLogin(t *testing.T) {
 	servUser := new(mocks.UserService)
 	servUser.On("GetByLogin", mock.Anything, mock.AnythingOfType("string"), mock.Anything).
-	Return("accessToken", "refreshToken", nil).
-	Once()
+		Return("accessToken", "refreshToken", nil).
+		Once()
 	GRPCHandl := NewGRPCHandler(nil, servUser, validator.New())
 	protoResponse, err := GRPCHandl.GetByLogin(context.Background(), &proto_services.GetByLoginRequest{Login: "testUser", Password: "testUser"})
 	require.NoError(t, err)
@@ -152,11 +152,11 @@ func TestGetByLogin(t *testing.T){
 	servUser.AssertExpectations(t)
 }
 
-func TestRefresh(t *testing.T){
+func TestRefresh(t *testing.T) {
 	servUser := new(mocks.UserService)
 	servUser.On("RefreshToken", mock.Anything, mock.AnythingOfType("string"), mock.AnythingOfType("string")).
-	Return("accessToken", "refreshToken", nil).
-	Once()
+		Return("accessToken", "refreshToken", nil).
+		Once()
 	GRPCHandl := NewGRPCHandler(nil, servUser, validator.New())
 	protoResponse, err := GRPCHandl.RefreshToken(context.Background(), &proto_services.RefreshTokenRequest{AccessToken: "testAccess", RefreshToken: "testRefresh"})
 	require.NoError(t, err)
